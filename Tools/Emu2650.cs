@@ -3,6 +3,99 @@ using System.IO;
 using System.Diagnostics;
 
 namespace Signetics2650 {
+    class P8251 {
+        public const uint S_TXRDY = 1;
+        public const uint S_RXRDY = 2;
+        public const uint S_TXEMPTY = 4;
+        public const uint S_PE = 8;
+        public const uint S_OE = 16;
+        public const uint S_FE = 32;
+        public const uint S_SYNDET = 64;
+        public const uint S_DSR = 128;
+
+        public uint mode,status;
+        public uint txbuff,rxbuff;
+        public bool waitingForMode;
+
+        private bool txOn,rxOn;
+
+        public P8251() {
+            Reset();
+        }
+
+        public void Update() {
+            if((status & S_TXEMPTY) == 0) {
+                Console.Write(Char.ToString((char)txbuff));
+                status |= S_TXEMPTY | S_TXRDY;
+            }
+            if(Console.KeyAvailable) {
+                rxbuff = Console.ReadKey(true).KeyChar;
+                if((status & S_RXRDY) == 0) {
+                    status |= S_OE;
+                }
+                status |= S_RXRDY;
+            }
+        }
+
+        public void Reset() {
+            waitingForMode = true;
+            status = S_TXEMPTY;
+            txOn = false;
+            rxOn = false;
+        }
+
+        public void SendByte(uint data, bool cd) {
+            if(waitingForMode) {
+                if(!cd) return;
+                mode = data;
+                status |= S_TXRDY;
+                waitingForMode = false;
+                return;
+            }
+            if(cd) {
+                txOn = (data & 1) != 0;
+                rxOn = (data & 4) != 0;
+                if((data & 16) != 0) {
+                    status &= ~(S_PE | S_OE | S_FE);
+                }
+                if((data & 64) != 0) {
+                    Reset();
+                    return;
+                }
+            }else {
+                if(!txOn) return;
+                txbuff = data;
+                status &= ~(S_TXEMPTY | S_TXRDY);
+            }
+        }
+
+        public uint ReadByte(bool cd) {
+            if(waitingForMode) return 0;
+            if(cd) {
+                return status;
+            }else {
+                status &= ~(S_RXRDY);
+                return rxbuff;
+            }
+        }
+    }
+
+    class OutputPort {
+        public uint state;
+
+        public OutputPort() {
+            Reset();
+        }
+
+        public void Reset() {
+            state = 0;
+        }
+
+        public void SendByte(uint data) {
+            this.state = data;
+        }
+    }
+
     class Emu2650 {
         const int ROM_SIZE = 4096;
         const int RAM_SIZE = 2048;
@@ -15,7 +108,12 @@ namespace Signetics2650 {
         public uint PR;
         public uint[] stack = new uint[8];
 
+        public OutputPort port;
+        public P8251 serial;
+
         public Emu2650(uint[] romImage) {
+            port = new OutputPort();
+            serial = new P8251();
             Reset();
             Array.Copy(romImage, ROM, Math.Min(romImage.Length, ROM_SIZE));
         }
@@ -24,6 +122,8 @@ namespace Signetics2650 {
             Array.Fill<uint>(RAM, 0);
             PSU = PSL = R0 = PC = PR = 0;
             regs[0,0] = regs[0,1] = regs[0,2] = regs[1,0] = regs[1,1] = regs[1,2] = 0;
+            port.Reset();
+            serial.Reset();
         }
 
         private uint ReadMem(uint addr) {
@@ -97,6 +197,12 @@ namespace Signetics2650 {
             uint effectiveAddress = (arg & 0b11111) << 8;
             effectiveAddress |= ReadInstrArg();
             arg >>= 5;
+            if((arg & 4) != 0) {
+                uint newAddr = ReadMem(effectiveAddress) << 8;
+                newAddr |= ReadMem((effectiveAddress + 1) & 8191);
+                newAddr &= 8191;
+                effectiveAddress = newAddr;
+            }
             arg &= 3;
             if(arg != 0) {
                 regNew = 0;
@@ -208,6 +314,7 @@ namespace Signetics2650 {
         }
 
         private void EmuStep() {
+            serial.Update();
             uint instr = ReadMem(PC);
             PC = (PC + 1) & 8191;
 
@@ -317,10 +424,35 @@ namespace Signetics2650 {
                 return;
             }
 
-            if((instr >= 0xF0 && instr <= 0xF3) || (instr >= 0xB0 && instr <= 0xB3)) {
-                uint reg = instr >= 0xF0 ? instr - 0xF0 : instr - 0xB0;
+            if(instr >= 0xF0 && instr <= 0xF3) { //wrtd
+                uint reg = instr - 0xF0;
                 uint val = GetReg(reg);
-                Console.Write(char.ToString((char)val));
+                if((port.state & 128) != 0) return;
+                if((port.state & 64) != 0) serial.SendByte(val, true);
+                else serial.SendByte(val, false);
+                return;
+            }
+
+            if(instr >= 0x70 && instr <= 0x73) { //redd
+                uint reg = instr - 0x70;
+                uint val;
+                if((port.state & 128) != 0) val = 0;
+                else {
+                    if((port.state & 64) != 0) val = serial.ReadByte(true);
+                    else val = serial.ReadByte(false);
+                }
+                SetReg(reg, val);
+                SetCCFor(val);
+                return;
+            }
+
+            if(instr >= 0xB0 && instr <= 0xB3) { //wrtc
+                uint reg = instr - 0xB0;
+                uint val = GetReg(reg);
+                port.SendByte(val);
+                if((port.state & 128) != 0) {
+                    serial.Reset();
+                }
                 return;
             }
 
