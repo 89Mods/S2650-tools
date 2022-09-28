@@ -1,0 +1,3 @@
+[submodule "Software/Bot/BotInterface/concord"]
+	path = Software/Bot/BotInterface/concord
+	url = https://github.com/Cogmasters/concord

@@ -40,4 +40,12 @@ This is a collection of programs for my Signetics 2650 microcomputer. Most of th
 		<td>R110</td>
 		<td>Implementation of the Rule 110 automata. Also contains a version that runs entirely within the CPU’s registers, requiring no RAM whatsoever.</td>
 	</tr>
+	<tr>
+		<td>MemoryMon</td>
+		<td>Lets you inspect, write into, and execute arbitrarily from memory. Enter programs manually through the terminal! Includes a "Hellorld!" program you can try assembling and then typing in.</td>
+	</tr>
+	<tr>
+		<td>Bot</td>
+		<td>Discord bot driven by the S2650. Similar command set as MemoryMon.</td>
+	</tr>
 </table>
