@@ -96,6 +96,7 @@ seed_read_loop:
 	stra,r0 SEED_1,r3+
 	comi,r3 3
 	bcfr,eq seed_read_loop
+	bsta,3 disable_rx_8251
 
 	bsta,3 xorshift
 	bsta,3 xorshift
@@ -169,8 +170,6 @@ btn_held:
 	rrr,r0
 	rrr,r0
 	rrr,r0
-	rrr,r0
-	rrr,r0
 	andi,r0 31
 	loda,r3 SLOW_EMISS
 	rrl,r3
@@ -181,6 +180,7 @@ btn_held:
 	andi,r3 32
 	iorz,r3
 	wrtc,r0
+	stra,r0 OUTPUT_SHADOW
 
 	lodi,r0 '#'
 	wrtd,r0
@@ -682,6 +682,24 @@ read_8251:
 	lodz,r1
 read_8251_return:
 	loda,r1 R0_BACK
+	retc,un
+
+disable_rx_8251:
+	stra,r0 R0_BACK
+	lodi,r0 64
+	iora,r0 OUTPUT_SHADOW
+	wrtc,r0
+	nop
+	nop
+	nop
+	nop
+	lodi,r0 0b00010011
+	wrtd,r0
+	loda,r0 OUTPUT_SHADOW
+	andi,r0 0b10111111
+	wrtc,r0
+	nop
+	loda,r0 R0_BACK
 	retc,un
 
 end
