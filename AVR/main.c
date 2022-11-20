@@ -76,7 +76,7 @@ int main(void){
 	UBRRL = 21;
 	UCSRA = (1 << U2X);
 	UCSRC = (1 << UCSZ1) | (1 << UCSZ0) | (1 << URSEL);
-	UCSRB = (1 << RXEN) | (1 << TXEN);
+	UCSRB = (1 << TXEN);
 	
 	DDRA = 0;
 	PORTA = 0;
@@ -106,6 +106,13 @@ int main(void){
 #endif
 	DDRA = 0x00;
 	PORTA = 0x00;
+	uint8_t auto_start = 0;
+	if((PINB & (1 << PB7)) == 0) {
+		printf("Auto-start!\r\n");
+		auto_start = 1;
+		goto skip;
+	}
+	UCSRB = (1 << RXEN) | (1 << TXEN);
 	printf("Press Enter to continue");
 	while(true){
 		char c = waitForChar();
@@ -168,6 +175,7 @@ int main(void){
 		}
 	}
 	
+skip:
 	DDRB = 0b00000101;
 	PORTB = 0b00000101;
 	DDRA = 0x00;
@@ -176,7 +184,7 @@ int main(void){
 	PORTC = 0x00;
 	DDRD = 0b10100010;
 	PORTD = 0x00;
-	printf("\r\nSelect CPU speed\r\n1) Single step (debug)\r\n2) 10Hz\r\n3) 100Hz\r\n4) 1KHz\r\n5) 10KHz\r\n6) 100KHz\r\n7) 1MHz\r\n8) 1.42MHz\r\n");
+	if(!auto_start) printf("\r\nSelect CPU speed\r\n1) Single step (debug)\r\n2) 10Hz\r\n3) 100Hz\r\n4) 1KHz\r\n5) 10KHz\r\n6) 100KHz\r\n7) 1MHz\r\n8) 1.42MHz\r\n");
 	PORTB &= ~(1 << PB2);
 	TCCR1A = (1 << COM1A0);
 	TCCR1B = (1 << WGM12);
@@ -186,9 +194,8 @@ int main(void){
 #endif
 	cpuReset();
 	
-	uint8_t tccr = 0;
 	while(true){
-		char c = waitForChar();
+		char c = auto_start ? '8' : waitForChar();
 		if(c == '1'){
 			TCCR1A = TCCR1B = 0;
 			debugger();
@@ -197,7 +204,6 @@ int main(void){
 		if(c >= '2' && c <= '8'){
 			OCR1A = stockDivisors[c - '2'];
 			TCCR1B |= stockPrescalers[c - '2'];
-			tccr = TCCR1B;
 			break;
 		}
 	}
@@ -223,7 +229,7 @@ int main(void){
 			while(!(PINB & 0b1000));
 		}
 #else
-	PORTB ^= (1 << PB7);
+	//PORTB ^= (1 << PB7);
 	_delay_us(104.166666667f);
 	/*time++;
 	if((PINB & (1 << PB7)) != last) {
