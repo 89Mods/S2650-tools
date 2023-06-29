@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace Signetics2650 {
-    enum AddessingModes {
+    enum AddressingModes {
         Implicit,
         Zero,
         Immediate,
@@ -12,7 +12,7 @@ namespace Signetics2650 {
         Absolute
     }
     struct Instruction {
-            public Instruction(uint op, bool br, bool reg, AddessingModes addr) {
+            public Instruction(uint op, bool br, bool reg, AddressingModes addr) {
                 opcode = op;
                 isBranch = br;
                 needsRegister = reg;
@@ -21,7 +21,7 @@ namespace Signetics2650 {
             public uint opcode { get; }
             public bool isBranch { get; }
             public bool needsRegister { get; }
-            public AddessingModes addrMode { get; }
+            public AddressingModes addrMode { get; }
     }
     class Asm2650 {
         private static Dictionary<string, Instruction> cpuInstrs = null;
@@ -31,91 +31,97 @@ namespace Signetics2650 {
         static void FillInstructionTable() {
             cpuInstrs = new Dictionary<string, Instruction>();
             unusableOpcodes = new List<string>();
-            cpuInstrs.Add("lodz", new Instruction(0x00, false, true, AddessingModes.Zero));
-            cpuInstrs.Add("lodi", new Instruction(0x04, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("lodr", new Instruction(0x08, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("loda", new Instruction(0x0C, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("spsu", new Instruction(0x12, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("spsl", new Instruction(0x13, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("retc", new Instruction(0x14, true, false, AddessingModes.Implicit));
-            cpuInstrs.Add("bctr", new Instruction(0x18, true, false, AddessingModes.Relative));
-            cpuInstrs.Add("bcta", new Instruction(0x1C, true, false, AddessingModes.Absolute));
-            cpuInstrs.Add("eorz", new Instruction(0x20, false, true, AddessingModes.Zero));
-            cpuInstrs.Add("eori", new Instruction(0x24, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("eorr", new Instruction(0x28, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("eora", new Instruction(0x2C, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("redc", new Instruction(0x30, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("rete", new Instruction(0x34, true, false, AddessingModes.Implicit));
-            cpuInstrs.Add("bstr", new Instruction(0x38, true, false, AddessingModes.Relative));
-            cpuInstrs.Add("bsta", new Instruction(0x3C, true, false, AddessingModes.Absolute));
-            cpuInstrs.Add("halt", new Instruction(0x40, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("andz", new Instruction(0x40, false, true, AddessingModes.Zero));
+            cpuInstrs.Add("lodz", new Instruction(0x00, false, true, AddressingModes.Zero));
+            cpuInstrs.Add("lodi", new Instruction(0x04, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("lodr", new Instruction(0x08, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("loda", new Instruction(0x0C, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("spsu", new Instruction(0x12, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("spsl", new Instruction(0x13, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("retc", new Instruction(0x14, true, false, AddressingModes.Implicit));
+            cpuInstrs.Add("bctr", new Instruction(0x18, true, false, AddressingModes.Relative));
+            cpuInstrs.Add("bcta", new Instruction(0x1C, true, false, AddressingModes.Absolute));
+            cpuInstrs.Add("eorz", new Instruction(0x20, false, true, AddressingModes.Zero));
+            cpuInstrs.Add("eori", new Instruction(0x24, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("eorr", new Instruction(0x28, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("eora", new Instruction(0x2C, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("redc", new Instruction(0x30, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("rete", new Instruction(0x34, true, false, AddressingModes.Implicit));
+            cpuInstrs.Add("bstr", new Instruction(0x38, true, false, AddressingModes.Relative));
+            cpuInstrs.Add("bsta", new Instruction(0x3C, true, false, AddressingModes.Absolute));
+            cpuInstrs.Add("halt", new Instruction(0x40, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("andz", new Instruction(0x40, false, true, AddressingModes.Zero));
             unusableOpcodes.Add("andz,r0");
-            cpuInstrs.Add("andi", new Instruction(0x44, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("andr", new Instruction(0x48, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("anda", new Instruction(0x4C, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("rrr",  new Instruction(0x50, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("rede", new Instruction(0x54, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("brnr", new Instruction(0x58, true, true, AddessingModes.Relative));
-            cpuInstrs.Add("brna", new Instruction(0x5C, true, true, AddessingModes.Absolute));
-            cpuInstrs.Add("iorz", new Instruction(0x60, false, true, AddessingModes.Zero));
-            cpuInstrs.Add("iori", new Instruction(0x64, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("iorr", new Instruction(0x68, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("iora", new Instruction(0x6C, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("redd", new Instruction(0x70, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("cpsu", new Instruction(0x74, false, false, AddessingModes.Immediate));
-            cpuInstrs.Add("cpsl", new Instruction(0x75, false, false, AddessingModes.Immediate));
-            cpuInstrs.Add("ppsu", new Instruction(0x76, false, false, AddessingModes.Immediate));
-            cpuInstrs.Add("ppsl", new Instruction(0x77, false, false, AddessingModes.Immediate));
-            cpuInstrs.Add("bsnr", new Instruction(0x78, true, true, AddessingModes.Relative));
-            cpuInstrs.Add("bsna", new Instruction(0x7C, true, true, AddessingModes.Absolute));
-            cpuInstrs.Add("addz", new Instruction(0x80, false, true, AddessingModes.Zero));
-            cpuInstrs.Add("addi", new Instruction(0x84, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("addr", new Instruction(0x88, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("adda", new Instruction(0x8C, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("lpsu", new Instruction(0x92, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("lpsl", new Instruction(0x93, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("dar",  new Instruction(0x94, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("bcfr", new Instruction(0x98, true, false, AddessingModes.Relative));
-            cpuInstrs.Add("zbrr", new Instruction(0x9B, true, false, AddessingModes.Relative));
+            cpuInstrs.Add("andi", new Instruction(0x44, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("andr", new Instruction(0x48, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("anda", new Instruction(0x4C, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("rrr",  new Instruction(0x50, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("rede", new Instruction(0x54, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("brnr", new Instruction(0x58, true, true, AddressingModes.Relative));
+            cpuInstrs.Add("brna", new Instruction(0x5C, true, true, AddressingModes.Absolute));
+            cpuInstrs.Add("iorz", new Instruction(0x60, false, true, AddressingModes.Zero));
+            cpuInstrs.Add("iori", new Instruction(0x64, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("iorr", new Instruction(0x68, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("iora", new Instruction(0x6C, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("redd", new Instruction(0x70, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("cpsu", new Instruction(0x74, false, false, AddressingModes.Immediate));
+            cpuInstrs.Add("cpsl", new Instruction(0x75, false, false, AddressingModes.Immediate));
+            cpuInstrs.Add("ppsu", new Instruction(0x76, false, false, AddressingModes.Immediate));
+            cpuInstrs.Add("ppsl", new Instruction(0x77, false, false, AddressingModes.Immediate));
+            cpuInstrs.Add("bsnr", new Instruction(0x78, true, true, AddressingModes.Relative));
+            cpuInstrs.Add("bsna", new Instruction(0x7C, true, true, AddressingModes.Absolute));
+            cpuInstrs.Add("addz", new Instruction(0x80, false, true, AddressingModes.Zero));
+            cpuInstrs.Add("addi", new Instruction(0x84, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("addr", new Instruction(0x88, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("adda", new Instruction(0x8C, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("lpsu", new Instruction(0x92, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("lpsl", new Instruction(0x93, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("dar",  new Instruction(0x94, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("bcfr", new Instruction(0x98, true, false, AddressingModes.Relative));
+            cpuInstrs.Add("zbrr", new Instruction(0x9B, true, false, AddressingModes.Relative));
             unusableOpcodes.Add("bcfr,un");
             unusableOpcodes.Add("bcfr,3");
-            cpuInstrs.Add("bcfa", new Instruction(0x9C, true, false, AddessingModes.Absolute));
-            cpuInstrs.Add("bxa",  new Instruction(0x9F, true, false, AddessingModes.Absolute));
+            cpuInstrs.Add("bcfa", new Instruction(0x9C, true, false, AddressingModes.Absolute));
+            cpuInstrs.Add("bxa",  new Instruction(0x9F, true, false, AddressingModes.Absolute));
             unusableOpcodes.Add("bcfa,un");
             unusableOpcodes.Add("bcfa,3");
-            cpuInstrs.Add("subz", new Instruction(0xA0, false, true, AddessingModes.Zero));
-            cpuInstrs.Add("subi", new Instruction(0xA4, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("subr", new Instruction(0xA8, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("suba", new Instruction(0xAC, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("wrtc", new Instruction(0xB0, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("tpsu", new Instruction(0xB4, false, false, AddessingModes.Immediate));
-            cpuInstrs.Add("tpsl", new Instruction(0xB5, false, false, AddessingModes.Immediate));
-            cpuInstrs.Add("bsfr", new Instruction(0xB8, true, false, AddessingModes.Relative));
+            cpuInstrs.Add("subz", new Instruction(0xA0, false, true, AddressingModes.Zero));
+            cpuInstrs.Add("subi", new Instruction(0xA4, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("subr", new Instruction(0xA8, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("suba", new Instruction(0xAC, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("wrtc", new Instruction(0xB0, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("tpsu", new Instruction(0xB4, false, false, AddressingModes.Immediate));
+            cpuInstrs.Add("tpsl", new Instruction(0xB5, false, false, AddressingModes.Immediate));
+            cpuInstrs.Add("bsfr", new Instruction(0xB8, true, false, AddressingModes.Relative));
             unusableOpcodes.Add("bsfr,un");
             unusableOpcodes.Add("bsfr,3");
-            cpuInstrs.Add("zsbr", new Instruction(0xBB, true, false, AddessingModes.Relative));
-            cpuInstrs.Add("bsfa", new Instruction(0xBC, true, false, AddessingModes.Absolute));
-            cpuInstrs.Add("bsxa", new Instruction(0xBF, true, false, AddessingModes.Absolute));
+            cpuInstrs.Add("zsbr", new Instruction(0xBB, true, false, AddressingModes.Relative));
+            cpuInstrs.Add("bsfa", new Instruction(0xBC, true, false, AddressingModes.Absolute));
+            cpuInstrs.Add("bsxa", new Instruction(0xBF, true, false, AddressingModes.Absolute));
             unusableOpcodes.Add("bsfa,un");
             unusableOpcodes.Add("bsfa,3");
-            cpuInstrs.Add("nop",  new Instruction(0xC0, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("strz", new Instruction(0xC0, false, true, AddessingModes.Zero));
+            cpuInstrs.Add("nop",  new Instruction(0xC0, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("strz", new Instruction(0xC0, false, true, AddressingModes.Zero));
             unusableOpcodes.Add("strz,r0");
-            cpuInstrs.Add("strr", new Instruction(0xC8, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("stra", new Instruction(0xCC, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("rrl",  new Instruction(0xD0, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("wrte", new Instruction(0xD4, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("birr", new Instruction(0xD8, true, true, AddessingModes.Relative));
-            cpuInstrs.Add("bira", new Instruction(0xDC, true, true, AddessingModes.Absolute));
-            cpuInstrs.Add("comz", new Instruction(0xE0, false, true, AddessingModes.Zero));
-            cpuInstrs.Add("comi", new Instruction(0xE4, false, true, AddessingModes.Immediate));
-            cpuInstrs.Add("comr", new Instruction(0xE8, false, true, AddessingModes.Relative));
-            cpuInstrs.Add("coma", new Instruction(0xEC, false, true, AddessingModes.Absolute));
-            cpuInstrs.Add("wrtd", new Instruction(0xF0, false, true, AddessingModes.Implicit));
-            cpuInstrs.Add("tmi",  new Instruction(0xF4, false, false, AddessingModes.Implicit));
-            cpuInstrs.Add("bdrr", new Instruction(0xF8, true, true, AddessingModes.Relative));
-            cpuInstrs.Add("bdra", new Instruction(0xFC, true, true, AddessingModes.Absolute));
+            cpuInstrs.Add("strr", new Instruction(0xC8, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("stra", new Instruction(0xCC, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("rrl",  new Instruction(0xD0, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("wrte", new Instruction(0xD4, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("birr", new Instruction(0xD8, true, true, AddressingModes.Relative));
+            cpuInstrs.Add("bira", new Instruction(0xDC, true, true, AddressingModes.Absolute));
+            cpuInstrs.Add("comz", new Instruction(0xE0, false, true, AddressingModes.Zero));
+            cpuInstrs.Add("comi", new Instruction(0xE4, false, true, AddressingModes.Immediate));
+            cpuInstrs.Add("comr", new Instruction(0xE8, false, true, AddressingModes.Relative));
+            cpuInstrs.Add("coma", new Instruction(0xEC, false, true, AddressingModes.Absolute));
+            cpuInstrs.Add("wrtd", new Instruction(0xF0, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("tmi",  new Instruction(0xF4, false, true, AddressingModes.Implicit));
+            cpuInstrs.Add("bdrr", new Instruction(0xF8, true, true, AddressingModes.Relative));
+            cpuInstrs.Add("bdra", new Instruction(0xFC, true, true, AddressingModes.Absolute));
+            
+            //AS2650 only!
+            cpuInstrs.Add("mul", new Instruction(0x90, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("xchg", new Instruction(0x91, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("push", new Instruction(0x10, false, false, AddressingModes.Implicit));
+            cpuInstrs.Add("pop", new Instruction(0x11, false, false, AddressingModes.Implicit));
         }
 
         private static bool ParseNum(string s, out uint res) {
@@ -282,7 +288,7 @@ namespace Signetics2650 {
         public static void Assemble(string source) {
             if(cpuInstrs == null) FillInstructionTable();
             string[] lines = File.ReadAllLines(source);
-            uint[] outputData = new uint[4096];
+            uint[] outputData = new uint[8192];
             //Remove comments
             for(int i = 0; i < lines.Length; i++) {
                 if(lines[i].IndexOf(';') >= 0) lines[i] = lines[i].Substring(0, lines[i].IndexOf(';'));
@@ -336,9 +342,9 @@ namespace Signetics2650 {
                         return;
                     }
                     uint instrLen = 1;
-                    if(instr.addrMode == AddessingModes.Immediate) instrLen += 1;
-                    else if(instr.addrMode == AddessingModes.Relative) instrLen += 1;
-                    else if(instr.addrMode == AddessingModes.Absolute) instrLen += 2;
+                    if(instr.addrMode == AddressingModes.Immediate) instrLen += 1;
+                    else if(instr.addrMode == AddressingModes.Relative) instrLen += 1;
+                    else if(instr.addrMode == AddressingModes.Absolute) instrLen += 2;
                     ptr += instrLen;
                 }else {
                     line = line.ToLower();
@@ -487,12 +493,12 @@ namespace Signetics2650 {
                     outputData[ptr] = finalOpcode;
                     ptr++;
 
-                    if((instr.isBranch || instr.addrMode != AddessingModes.Absolute) && arg3 != null) {
+                    if((instr.isBranch || instr.addrMode != AddressingModes.Absolute) && arg3 != null) {
                         Console.WriteLine($"Error on line {i + 1}: Too many arguments to non-indexed instruction.");
                         return;
                     }
 
-                    if(instr.isBranch && instr.addrMode == AddessingModes.Relative) {
+                    if(instr.isBranch && instr.addrMode == AddressingModes.Relative) {
                         bool indirect = arg1.StartsWith('*');
                         if(indirect) arg1 = arg1.Substring(1);
                         uint argValue;
@@ -512,7 +518,7 @@ namespace Signetics2650 {
                         }
                         outputData[ptr] = (uint)(diff | (indirect ? 128 : 0));
                         ptr++;
-                    }else if(instr.isBranch && instr.addrMode == AddessingModes.Absolute) {
+                    }else if(instr.isBranch && instr.addrMode == AddressingModes.Absolute) {
                         bool indirect = arg1.StartsWith('*');
                         if(indirect) arg1 = arg1.Substring(1);
                         uint argValue;
@@ -527,7 +533,7 @@ namespace Signetics2650 {
                         outputData[ptr] = (argValue >> 8) | (uint)(indirect ? 128 : 0);
                         outputData[ptr + 1] = argValue & 255;
                         ptr += 2;
-                    }else if(!instr.isBranch && instr.addrMode == AddessingModes.Immediate) {
+                    }else if(!instr.isBranch && instr.addrMode == AddressingModes.Immediate) {
                         uint argValue;
                         if(!ParseInstrArg(arg1, symbolTable, out argValue)) {
                             Console.WriteLine($"Error on line {i + 1}: Invalid expression \"{arg1}\".");
@@ -539,7 +545,7 @@ namespace Signetics2650 {
                         }
                         outputData[ptr] = argValue;
                         ptr++;
-                    }else if(!instr.isBranch && instr.addrMode == AddessingModes.Relative) {
+                    }else if(!instr.isBranch && instr.addrMode == AddressingModes.Relative) {
                         bool indirect = arg1.StartsWith('*');
                         if(indirect) arg1 = arg1.Substring(1);
                         uint argValue;
@@ -559,7 +565,7 @@ namespace Signetics2650 {
                         }
                         outputData[ptr] = (uint)(diff | (indirect ? 128 : 0));
                         ptr++;
-                    }else if(!instr.isBranch && instr.addrMode == AddessingModes.Absolute) {
+                    }else if(!instr.isBranch && instr.addrMode == AddressingModes.Absolute) {
                         bool indirect = arg1.StartsWith('*');
                         if(indirect) arg1 = arg1.Substring(1);
                         uint argValue;
